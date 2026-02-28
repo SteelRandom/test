@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atrapa las Gotas</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to bottom, #0b3b5c, #1b5a7a);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Arial', sans-serif;
+        }
+        #gameContainer {
+            text-align: center;
+            background-color: #2c3e50;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        canvas {
+            border: 2px solid #fff;
+            border-radius: 10px;
+            background-color: #87CEEB; /* Azul cielo */
+            cursor: none; /* Ocultamos el cursor del ratón para que no estorbe */
+            display: block;
+            margin-bottom: 10px;
+        }
+        #scoreBoard {
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        #restartBtn {
+            background-color: #e67e22;
+            color: white;
+            border: none;
+            padding: 10px 30px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+        #restartBtn:hover {
+            background-color: #d35400;
+            transform: scale(1.05);
+        }
+        .instructions {
+            color: #ecf0f1;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="500" height="400"></canvas>
+        <div id="scoreBoard">Puntos: <span id="scoreValue">0</span></div>
+        <button id="restartBtn">Reiniciar Juego</button>
+        <div class="instructions">Mueve el ratón o las flechas ← → para mover la canasta</div>
+    </div>
+
+    <script>
+        // --- Configuración inicial ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreSpan = document.getElementById('scoreValue');
+
+        // Tamaños
+        const CANASTA_ANCHO = 80;
+        const CANASTA_ALTO = 20;
+        const GOTA_RADIO = 8;
+
+        // Posición inicial de la canasta
+        let canastaX = (canvas.width - CANASTA_ANCHO) / 2;
+        const canastaY = canvas.height - CANASTA_ALTO - 10; // Un poco arriba del borde
+
+        // Array para almacenar las gotas
+        let gotas = [];
+        
+        // Puntuación
+        let puntuacion = 0;
+        
+        // Control de juego
+        let juegoActivo = true;
+
+        // Control de teclado
+        let izquierdaPresionado = false;
+        let derechaPresionado = false;
+        const VELOCIDAD_CANASTA = 7;
+
+        // --- Funciones auxiliares ---
+        function actualizarPuntuacion() {
+            scoreSpan.textContent = puntuacion;
+        }
+
+        // --- Crear una nueva gota ---
+        function crearGota() {
+            return {
+                x: Math.random() * (canvas.width - GOTA_RADIO * 2) + GOTA_RADIO,
+                y: 0, // Empieza desde arriba
+                velocidad: 2 + Math.random() * 3, // Velocidad entre 2 y 5
+                radio: GOTA_RADIO
+            };
+        }
+
+        // --- Dibujar todo ---
+        function dibujar() {
+            // Limpiar canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Dibujar cielo (degradado)
+            const gradiente = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradiente.addColorStop(0, '#87CEEB');
+            gradiente.addColorStop(1, '#B0E0E6');
+            ctx.fillStyle = gradiente;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Dibujar nubes (decoración)
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.beginPath();
+            ctx.arc(100, 50, 30, 0, Math.PI * 2);
+            ctx.arc(140, 40, 35, 0, Math.PI * 2);
+            ctx.arc(180, 50, 25, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(350, 80, 25, 0, Math.PI * 2);
+            ctx.arc(380, 70, 30, 0, Math.PI * 2);
+            ctx.arc(420, 80, 20, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Dibujar gotas
+            gotas.forEach(gota => {
+                // Gota azul con brillo
+                ctx.beginPath();
+                ctx.arc(gota.x, gota.y, gota.radio, 0, Math.PI * 2);
+                
+                // Degradado para la gota
+                const gradGota = ctx.createRadialGradient(gota.x - 2, gota.y - 2, 2, gota.x, gota.y, gota.radio);
+                gradGota.addColorStop(0, '#a8e6ff');
+                gradGota.addColorStop(1, '#0099cc');
+                ctx.fillStyle = gradGota;
+                ctx.fill();
+                
+                // Reflejo
+                ctx.beginPath();
+                ctx.arc(gota.x - 2, gota.y - 2, 2, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.fill();
+            });
+
+            // Dibujar canasta (cesta)
+            ctx.fillStyle = '#8B4513'; // Marrón madera
+            ctx.shadowColor = '#000';
+            ctx.shadowBlur = 10;
+            ctx.shadowOffsetY = 3;
+            
+            // Base de la canasta
+            ctx.fillRect(canastaX, canastaY, CANASTA_ANCHO, CANASTA_ALTO);
+            
+            // Reborde superior (como si fuera de mimbre)
+            ctx.fillStyle = '#A0522D';
+            ctx.fillRect(canastaX - 5, canastaY - 5, CANASTA_ANCHO + 10, 5);
+            
+            // Sombra de la canasta (parte interior)
+            ctx.fillStyle = '#5D3A1A';
+            ctx.fillRect(canastaX + 5, canastaY + 3, CANASTA_ANCHO - 10, 5);
+            
+            // Reiniciar sombra para no afectar otros dibujos
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetY = 0;
+        }
+
+        // --- Actualizar posiciones y lógica ---
+        function actualizar() {
+            if (!juegoActivo) return;
+
+            // 1. Mover canasta con teclado
+            if (izquierdaPresionado && canastaX > 0) {
+                canastaX -= VELOCIDAD_CANASTA;
+            }
+            if (derechaPresionado && canastaX < canvas.width - CANASTA_ANCHO) {
+                canastaX += VELOCIDAD_CANASTA;
+            }
+
+            // 2. Crear nuevas gotas aleatoriamente
+            if (Math.random() < 0.02) { // Probabilidad de crear una nueva gota en cada frame
+                gotas.push(crearGota());
+            }
+
+            // 3. Mover gotas y comprobar colisiones
+            for (let i = gotas.length - 1; i >= 0; i--) {
+                const gota = gotas[i];
+                gota.y += gota.velocidad;
+
+                // Comprobar si la gota ha sido atrapada por la canasta
+                if (gota.y + gota.radio > canastaY && 
+                    gota.x > canastaX && 
+                    gota.x < canastaX + CANASTA_ANCHO) {
+                    
+                    // Atrapada!
+                    gotas.splice(i, 1);
+                    puntuacion++;
+                    actualizarPuntuacion();
+                    continue; // Pasamos a la siguiente gota
+                }
+
+                // Comprobar si la gota toca el suelo (Game Over)
+                if (gota.y + gota.radio > canvas.height) {
+                    juegoActivo = false;
+                    // Podríamos poner un mensaje aquí
+                }
+            }
+
+            // Si el juego no está activo, podríamos mostrar algo, pero lo manejamos en el dibujo
+        }
+
+        // --- Bucle principal del juego ---
+        function gameLoop() {
+            actualizar();
+            dibujar();
+
+            // Si el juego no está activo, mostramos el mensaje de Game Over
+            if (!juegoActivo) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.font = 'bold 40px Arial';
+                ctx.fillStyle = 'white';
+                ctx.shadowColor = 'red';
+                ctx.shadowBlur = 15;
+                ctx.fillText('GAME OVER', 70, 200);
+                
+                ctx.font = '20px Arial';
+                ctx.fillStyle = 'yellow';
+                ctx.fillText('Puntuación final: ' + puntuacion, 140, 280);
+                ctx.shadowBlur = 0; // Reiniciamos sombra
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- Event Listeners ---
+
+        // Movimiento con el ratón
+        canvas.addEventListener('mousemove', (e) => {
+            if (!juegoActivo) return; // No mover si el juego terminó
+            
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            
+            // Calcular nueva posición, limitando los bordes
+            let nuevaX = mouseX - CANASTA_ANCHO / 2;
+            nuevaX = Math.max(0, Math.min(nuevaX, canvas.width - CANASTA_ANCHO));
+            canastaX = nuevaX;
+        });
+
+        // Movimiento con teclado
+        window.addEventListener('keydown', (e) => {
+            if (!juegoActivo) return;
+            
+            if (e.key === 'ArrowLeft') {
+                izquierdaPresionado = true;
+                e.preventDefault(); // Evitar que la página se desplace
+            } else if (e.key === 'ArrowRight') {
+                derechaPresionado = true;
+                e.preventDefault();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft') {
+                izquierdaPresionado = false;
+                e.preventDefault();
+            } else if (e.key === 'ArrowRight') {
+                derechaPresionado = false;
+                e.preventDefault();
+            }
+        });
+
+        // Evitar que las flechas muevan la página si el canvas no está enfocado
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                e.preventDefault();
+            }
+        }, {passive: false});
+
+        // Reiniciar juego
+        document.getElementById('restartBtn').addEventListener('click', () => {
+            juegoActivo = true;
+            gotas = [];
+            puntuacion = 0;
+            actualizarPuntuacion();
+            canastaX = (canvas.width - CANASTA_ANCHO) / 2;
+            izquierdaPresionado = false;
+            derechaPresionado = false;
+        });
+
+        // Iniciar el juego
+        gameLoop();
+    </script>
+</body>
+</html>
