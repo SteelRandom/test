@@ -1,311 +1,350 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Atrapa las Gotas</title>
+    <title>rain catcher ☔</title>
     <style>
+        * {
+            box-sizing: border-box;
+        }
+        
         body {
             margin: 0;
-            padding: 0;
-            background: linear-gradient(to bottom, #0b3b5c, #1b5a7a);
-            display: flex;
-            justify-content: center;
-            align-items: center;
             min-height: 100vh;
-            font-family: 'Arial', sans-serif;
+            background: #1a2f3f;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        #gameContainer {
-            text-align: center;
-            background-color: #2c3e50;
-            padding: 20px;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+
+        .game-wrapper {
+            background: #1e3b4c;
+            padding: 25px 20px 20px;
+            border-radius: 35px 35px 25px 25px;
+            box-shadow: 0 15px 0 #0f232f, 0 20px 25px rgba(0,0,0,0.5);
+            border-bottom: 3px solid #5f9db2;
         }
+
         canvas {
-            border: 2px solid #fff;
-            border-radius: 10px;
-            background-color: #87CEEB; /* Azul cielo */
-            cursor: none; /* Ocultamos el cursor del ratón para que no estorbe */
             display: block;
-            margin-bottom: 10px;
+            margin: 0 auto;
+            border-radius: 16px;
+            background: linear-gradient(180deg, #9fd9ff 0%, #c0e6ff 80%);
+            box-shadow: inset 0 -5px 10px rgba(0,30,40,0.3), 0 10px 10px rgba(0,0,0,0.3);
+            cursor: none;
+            border: 3px solid #ffe68f;
         }
-        #scoreBoard {
-            color: white;
-            font-size: 24px;
+
+        .score-panel {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #2b4a5a;
+            margin-top: 18px;
+            padding: 12px 20px;
+            border-radius: 60px;
+            border: 2px solid #ffcf9a;
+            box-shadow: inset 0 2px 5px #1f3540, 0 5px 0 #17323f;
+        }
+
+        .score-box {
+            background: #1f2e38;
+            color: #ffecbb;
+            font-size: 28px;
             font-weight: bold;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            padding: 5px 25px;
+            border-radius: 40px;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 0 #7f5d38;
+            box-shadow: inset 0 -3px 0 #0c1a21, 0 3px 0 #3f5e6b;
         }
-        #restartBtn {
-            background-color: #e67e22;
-            color: white;
+
+        .restart-btn {
+            background: #f9b83c;
             border: none;
-            padding: 10px 30px;
-            font-size: 18px;
-            border-radius: 50px;
-            cursor: pointer;
-            margin-top: 10px;
+            color: #222;
+            font-size: 20px;
             font-weight: bold;
-            transition: transform 0.2s;
+            padding: 8px 25px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-family: inherit;
+            letter-spacing: 1px;
+            border-bottom: 5px solid #b27d28;
+            transition: all 0.07s;
+            box-shadow: 0 3px 0 #744f1a;
         }
-        #restartBtn:hover {
-            background-color: #d35400;
-            transform: scale(1.05);
+
+        .restart-btn:active {
+            transform: translateY(4px);
+            border-bottom-width: 2px;
         }
-        .instructions {
-            color: #ecf0f1;
-            margin-top: 10px;
-            font-size: 14px;
+
+        .restart-btn:hover {
+            background: #ffc857;
+        }
+
+        .controls {
+            color: #cfecf0;
+            font-size: 15px;
+            margin-top: 12px;
+            text-align: center;
+            background: #1c3f4b;
+            padding: 6px 0;
+            border-radius: 30px;
+            border: 1px solid #ffd78c;
+        }
+
+        .controls span {
+            display: inline-block;
+            background: #162e38;
+            padding: 2px 15px;
+            border-radius: 20px;
+            margin: 0 4px;
+            border: 1px solid #cf9f5a;
         }
     </style>
 </head>
 <body>
-    <div id="gameContainer">
-        <canvas id="gameCanvas" width="500" height="400"></canvas>
-        <div id="scoreBoard">Puntos: <span id="scoreValue">0</span></div>
-        <button id="restartBtn">Reiniciar Juego</button>
-        <div class="instructions">Mueve el ratón o las flechas ← → para mover la canasta</div>
+    <div class="game-wrapper">
+        <canvas id="gameCanvas" width="520" height="400"></canvas>
+        
+        <div class="score-panel">
+            <div class="score-box">
+                <span id="scoreDisplay">0</span>
+            </div>
+            <button class="restart-btn" id="resetGame">↻ again</button>
+        </div>
+        
+        <div class="controls">
+            <span>🖱️ mouse</span> or <span>← → keys</span>
+        </div>
     </div>
 
     <script>
-        // --- Configuración inicial ---
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const scoreSpan = document.getElementById('scoreValue');
-
-        // Tamaños
-        const CANASTA_ANCHO = 80;
-        const CANASTA_ALTO = 20;
-        const GOTA_RADIO = 8;
-
-        // Posición inicial de la canasta
-        let canastaX = (canvas.width - CANASTA_ANCHO) / 2;
-        const canastaY = canvas.height - CANASTA_ALTO - 10; // Un poco arriba del borde
-
-        // Array para almacenar las gotas
-        let gotas = [];
-        
-        // Puntuación
-        let puntuacion = 0;
-        
-        // Control de juego
-        let juegoActivo = true;
-
-        // Control de teclado
-        let izquierdaPresionado = false;
-        let derechaPresionado = false;
-        const VELOCIDAD_CANASTA = 7;
-
-        // --- Funciones auxiliares ---
-        function actualizarPuntuacion() {
-            scoreSpan.textContent = puntuacion;
-        }
-
-        // --- Crear una nueva gota ---
-        function crearGota() {
-            return {
-                x: Math.random() * (canvas.width - GOTA_RADIO * 2) + GOTA_RADIO,
-                y: 0, // Empieza desde arriba
-                velocidad: 2 + Math.random() * 3, // Velocidad entre 2 y 5
-                radio: GOTA_RADIO
-            };
-        }
-
-        // --- Dibujar todo ---
-        function dibujar() {
-            // Limpiar canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Dibujar cielo (degradado)
-            const gradiente = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradiente.addColorStop(0, '#87CEEB');
-            gradiente.addColorStop(1, '#B0E0E6');
-            ctx.fillStyle = gradiente;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Dibujar nubes (decoración)
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-            ctx.beginPath();
-            ctx.arc(100, 50, 30, 0, Math.PI * 2);
-            ctx.arc(140, 40, 35, 0, Math.PI * 2);
-            ctx.arc(180, 50, 25, 0, Math.PI * 2);
-            ctx.fill();
+        (function() {
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const scoreEl = document.getElementById('scoreDisplay');
             
-            ctx.beginPath();
-            ctx.arc(350, 80, 25, 0, Math.PI * 2);
-            ctx.arc(380, 70, 30, 0, Math.PI * 2);
-            ctx.arc(420, 80, 20, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Dibujar gotas
-            gotas.forEach(gota => {
-                // Gota azul con brillo
-                ctx.beginPath();
-                ctx.arc(gota.x, gota.y, gota.radio, 0, Math.PI * 2);
-                
-                // Degradado para la gota
-                const gradGota = ctx.createRadialGradient(gota.x - 2, gota.y - 2, 2, gota.x, gota.y, gota.radio);
-                gradGota.addColorStop(0, '#a8e6ff');
-                gradGota.addColorStop(1, '#0099cc');
-                ctx.fillStyle = gradGota;
-                ctx.fill();
-                
-                // Reflejo
-                ctx.beginPath();
-                ctx.arc(gota.x - 2, gota.y - 2, 2, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-                ctx.fill();
-            });
-
-            // Dibujar canasta (cesta)
-            ctx.fillStyle = '#8B4513'; // Marrón madera
-            ctx.shadowColor = '#000';
-            ctx.shadowBlur = 10;
-            ctx.shadowOffsetY = 3;
+            const basketW = 95;
+            const basketH = 22;
+            const dropSize = 9;
             
-            // Base de la canasta
-            ctx.fillRect(canastaX, canastaY, CANASTA_ANCHO, CANASTA_ALTO);
+            let basketX = (canvas.width - basketW) / 2;
+            const basketY = canvas.height - basketH - 18;
             
-            // Reborde superior (como si fuera de mimbre)
-            ctx.fillStyle = '#A0522D';
-            ctx.fillRect(canastaX - 5, canastaY - 5, CANASTA_ANCHO + 10, 5);
+            let rainDrops = [];
             
-            // Sombra de la canasta (parte interior)
-            ctx.fillStyle = '#5D3A1A';
-            ctx.fillRect(canastaX + 5, canastaY + 3, CANASTA_ANCHO - 10, 5);
+            let points = 0;
+            let playing = true;
             
-            // Reiniciar sombra para no afectar otros dibujos
-            ctx.shadowBlur = 0;
-            ctx.shadowOffsetY = 0;
-        }
-
-        // --- Actualizar posiciones y lógica ---
-        function actualizar() {
-            if (!juegoActivo) return;
-
-            // 1. Mover canasta con teclado
-            if (izquierdaPresionado && canastaX > 0) {
-                canastaX -= VELOCIDAD_CANASTA;
+            let moveLeft = false;
+            let moveRight = false;
+            const moveSpeed = 6;
+            
+            let frameCounter = 0;
+            
+            function refreshScore() {
+                scoreEl.innerText = points;
             }
-            if (derechaPresionado && canastaX < canvas.width - CANASTA_ANCHO) {
-                canastaX += VELOCIDAD_CANASTA;
+            
+            function makeDrop() {
+                return {
+                    x: Math.random() * (canvas.width - dropSize * 2) + dropSize,
+                    y: -dropSize,
+                    speed: 1.8 + Math.random() * 4.2,
+                    r: dropSize - (Math.random() > 0.7 ? 2 : 0),
+                };
             }
-
-            // 2. Crear nuevas gotas aleatoriamente
-            if (Math.random() < 0.02) { // Probabilidad de crear una nueva gota en cada frame
-                gotas.push(crearGota());
-            }
-
-            // 3. Mover gotas y comprobar colisiones
-            for (let i = gotas.length - 1; i >= 0; i--) {
-                const gota = gotas[i];
-                gota.y += gota.velocidad;
-
-                // Comprobar si la gota ha sido atrapada por la canasta
-                if (gota.y + gota.radio > canastaY && 
-                    gota.x > canastaX && 
-                    gota.x < canastaX + CANASTA_ANCHO) {
-                    
-                    // Atrapada!
-                    gotas.splice(i, 1);
-                    puntuacion++;
-                    actualizarPuntuacion();
-                    continue; // Pasamos a la siguiente gota
-                }
-
-                // Comprobar si la gota toca el suelo (Game Over)
-                if (gota.y + gota.radio > canvas.height) {
-                    juegoActivo = false;
-                    // Podríamos poner un mensaje aquí
-                }
-            }
-
-            // Si el juego no está activo, podríamos mostrar algo, pero lo manejamos en el dibujo
-        }
-
-        // --- Bucle principal del juego ---
-        function gameLoop() {
-            actualizar();
-            dibujar();
-
-            // Si el juego no está activo, mostramos el mensaje de Game Over
-            if (!juegoActivo) {
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            
+            function drawScene() {
+                const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                grad.addColorStop(0, '#a5d5f0');
+                grad.addColorStop(0.7, '#d4f0ff');
+                ctx.fillStyle = grad;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 
-                ctx.font = 'bold 40px Arial';
-                ctx.fillStyle = 'white';
-                ctx.shadowColor = 'red';
-                ctx.shadowBlur = 15;
-                ctx.fillText('GAME OVER', 70, 200);
+                ctx.fillStyle = '#ffffffdd';
                 
-                ctx.font = '20px Arial';
-                ctx.fillStyle = 'yellow';
-                ctx.fillText('Puntuación final: ' + puntuacion, 140, 280);
-                ctx.shadowBlur = 0; // Reiniciamos sombra
+                ctx.beginPath();
+                ctx.ellipse(90, 45, 40, 25, 0, 0, Math.PI*2);
+                ctx.ellipse(130, 35, 45, 28, 0, 0, Math.PI*2);
+                ctx.ellipse(170, 45, 30, 20, 0, 0, Math.PI*2);
+                ctx.fill();
+                
+                ctx.fillStyle = '#ffffffc0';
+                ctx.beginPath();
+                ctx.ellipse(370, 70, 35, 18, 0, 0, Math.PI*2);
+                ctx.ellipse(410, 60, 50, 25, 0, 0, Math.PI*2);
+                ctx.ellipse(460, 70, 30, 20, 0, 0, Math.PI*2);
+                ctx.fill();
+                
+                for (let d of rainDrops) {
+                    ctx.beginPath();
+                    ctx.arc(d.x, d.y, d.r, 0, Math.PI*2);
+                    
+                    let gradDrop = ctx.createRadialGradient(d.x-3, d.y-3, 2, d.x, d.y, d.r);
+                    gradDrop.addColorStop(0, '#e8f5ff');
+                    gradDrop.addColorStop(0.7, '#3d98c9');
+                    ctx.fillStyle = gradDrop;
+                    ctx.fill();
+                    
+                    ctx.beginPath();
+                    ctx.arc(d.x-2, d.y-3, 2, 0, Math.PI*2);
+                    ctx.fillStyle = '#ffffffc0';
+                    ctx.fill();
+                }
+                
+                ctx.shadowColor = '#402818';
+                ctx.shadowBlur = 8;
+                ctx.shadowOffsetY = 3;
+                
+                ctx.fillStyle = '#9c6b3e';
+                ctx.fillRect(basketX, basketY, basketW, basketH);
+                
+                ctx.fillStyle = '#c18b4b';
+                ctx.fillRect(basketX-6, basketY-6, basketW+12, 7);
+                
+                ctx.strokeStyle = '#6d4f2b';
+                ctx.lineWidth = 2;
+                ctx.shadowBlur = 0;
+                for (let i = 0; i < 5; i++) {
+                    let offset = i * 18;
+                    ctx.beginPath();
+                    ctx.moveTo(basketX + 10 + offset, basketY-3);
+                    ctx.lineTo(basketX + 5 + offset, basketY + basketH + 2);
+                    ctx.strokeStyle = '#5d3f1f';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                }
+                
+                ctx.shadowBlur = 0;
+                ctx.shadowOffsetY = 0;
             }
-
-            requestAnimationFrame(gameLoop);
-        }
-
-        // --- Event Listeners ---
-
-        // Movimiento con el ratón
-        canvas.addEventListener('mousemove', (e) => {
-            if (!juegoActivo) return; // No mover si el juego terminó
             
-            const rect = canvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
+            function updateWorld() {
+                if (!playing) return;
+                
+                if (moveLeft && basketX > 5) {
+                    basketX -= moveSpeed;
+                }
+                if (moveRight && basketX < canvas.width - basketW - 5) {
+                    basketX += moveSpeed;
+                }
+                
+                if (Math.random() < 0.025) {
+                    rainDrops.push(makeDrop());
+                }
+                
+                for (let i = rainDrops.length - 1; i >= 0; i--) {
+                    let drop = rainDrops[i];
+                    drop.y += drop.speed;
+                    
+                    if (drop.y + drop.r > basketY && 
+                        drop.x > basketX - 3 && 
+                        drop.x < basketX + basketW + 3) {
+                        
+                        rainDrops.splice(i, 1);
+                        points++;
+                        refreshScore();
+                        continue;
+                    }
+                    
+                    if (drop.y + drop.r > canvas.height + 5) {
+                        playing = false;
+                    }
+                }
+                
+                if (frameCounter % 37 === 0 && playing) {
+                    if (Math.random() > 0.3) {
+                        rainDrops.push(makeDrop());
+                    }
+                }
+                
+                frameCounter++;
+            }
             
-            // Calcular nueva posición, limitando los bordes
-            let nuevaX = mouseX - CANASTA_ANCHO / 2;
-            nuevaX = Math.max(0, Math.min(nuevaX, canvas.width - CANASTA_ANCHO));
-            canastaX = nuevaX;
-        });
-
-        // Movimiento con teclado
-        window.addEventListener('keydown', (e) => {
-            if (!juegoActivo) return;
+            function tick() {
+                updateWorld();
+                drawScene();
+                
+                if (!playing) {
+                    ctx.fillStyle = '#000000aa';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    ctx.font = 'bold 42px "Courier New", monospace';
+                    ctx.fillStyle = '#ffded5';
+                    ctx.shadowColor = '#aa0000';
+                    ctx.shadowBlur = 15;
+                    ctx.fillText('GAME OVER', 45, 190);
+                    
+                    ctx.font = '22px system-ui';
+                    ctx.fillStyle = '#fbe49b';
+                    ctx.shadowBlur = 10;
+                    ctx.fillText('score: ' + points, 180, 270);
+                    
+                    ctx.shadowBlur = 0;
+                }
+                
+                requestAnimationFrame(tick);
+            }
             
-            if (e.key === 'ArrowLeft') {
-                izquierdaPresionado = true;
-                e.preventDefault(); // Evitar que la página se desplace
-            } else if (e.key === 'ArrowRight') {
-                derechaPresionado = true;
-                e.preventDefault();
-            }
-        });
-
-        window.addEventListener('keyup', (e) => {
-            if (e.key === 'ArrowLeft') {
-                izquierdaPresionado = false;
-                e.preventDefault();
-            } else if (e.key === 'ArrowRight') {
-                derechaPresionado = false;
-                e.preventDefault();
-            }
-        });
-
-        // Evitar que las flechas muevan la página si el canvas no está enfocado
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-                e.preventDefault();
-            }
-        }, {passive: false});
-
-        // Reiniciar juego
-        document.getElementById('restartBtn').addEventListener('click', () => {
-            juegoActivo = true;
-            gotas = [];
-            puntuacion = 0;
-            actualizarPuntuacion();
-            canastaX = (canvas.width - CANASTA_ANCHO) / 2;
-            izquierdaPresionado = false;
-            derechaPresionado = false;
-        });
-
-        // Iniciar el juego
-        gameLoop();
+            canvas.addEventListener('mousemove', (e) => {
+                if (!playing) return;
+                
+                let rect = canvas.getBoundingClientRect();
+                let mousePos = e.clientX - rect.left;
+                
+                let targetX = mousePos - basketW/2;
+                if (targetX < 3) targetX = 3;
+                if (targetX > canvas.width - basketW - 3) targetX = canvas.width - basketW - 3;
+                
+                basketX = targetX;
+            });
+            
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                    e.preventDefault();
+                }
+                
+                if (!playing) return;
+                
+                if (e.key === 'ArrowLeft') {
+                    moveLeft = true;
+                } else if (e.key === 'ArrowRight') {
+                    moveRight = true;
+                }
+            });
+            
+            window.addEventListener('keyup', (e) => {
+                if (e.key === 'ArrowLeft') {
+                    moveLeft = false;
+                    e.preventDefault();
+                } else if (e.key === 'ArrowRight') {
+                    moveRight = false;
+                    e.preventDefault();
+                }
+            });
+            
+            document.getElementById('resetGame').addEventListener('click', () => {
+                playing = true;
+                rainDrops = [];
+                points = 0;
+                refreshScore();
+                basketX = (canvas.width - basketW) / 2;
+                moveLeft = false;
+                moveRight = false;
+                frameCounter = 0;
+            });
+            
+            refreshScore();
+            tick();
+            
+        })();
     </script>
 </body>
 </html>
